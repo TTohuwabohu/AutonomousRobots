@@ -144,6 +144,8 @@ init(object(product,4),value(on,(3,1))).
 init(object(product,5),value(on,(1,10))).
 init(object(product,5),value(on,(2,10))).
 init(object(robot,1),value(at,(1,6))).
+init(object(robot,2),value(at,(3,6))).
+init(object(robot,3),value(at,(5,6))).
 init(object(shelf,1),value(at,(3,3))).
 init(object(shelf,2),value(at,(5,3))).
 init(object(shelf,3),value(at,(7,3))).
@@ -156,6 +158,11 @@ init(object(shelf,9),value(at,(7,4))).
 init(object(shelf,10),value(at,(8,4))).
 init(object(shelf,11),value(at,(9,4))).
 init(object(shelf,12),value(at,(10,4))).
+
+%order(P, S, R).
+%order(2, 1, 1).
+%order(4, 2, 2).
+%order(1, 2, 3).
 
 
 %start(1, 6).
