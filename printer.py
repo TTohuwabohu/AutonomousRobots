@@ -2,7 +2,7 @@ class Printer(object):
 	def add_inits(self, inits):
 		type(inits)
 		for atom in inits:
-			print(atom)
+			print(atom + ".")
 
 	def add(self, rid, name, args, t):
 		txt = "occurs(object(robot,"+str(rid)+"),action("+name+",("
@@ -10,7 +10,7 @@ class Printer(object):
 			txt += str(args[0])+","+str(args[1])
 		elif name == "deliver":
 			txt += str(args[0])+","+str(args[1])
-		txt += ")),"+str(t)+")"
+		txt += ")),"+str(t)+")."
 
 		print(txt)
 

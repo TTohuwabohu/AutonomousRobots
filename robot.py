@@ -32,7 +32,8 @@ class Robot(object):
 		self.order[0] = id
 		self.order[1] = p
 		self.order[2] = s
-		prg.add("base", [], "order("+str(p)+", "+str(s)+", "+str(self.id)+").")
+		print ( "order("+str(p)+", "+str(s)+", "+str(self.id)+", "+str(id)+").")
+		prg.add("base", [], "order("+str(p)+", "+str(s)+", "+str(self.id)+", "+str(id)+").")
 	
 
 	def update_state(self, state):

@@ -2,6 +2,7 @@ import clingo
 import robot
 import printer
 import simulatorCostum
+from time import time
 
 class Pathfind(object):
 	def __init__(self, instance, encoding):
@@ -28,6 +29,11 @@ class Pathfind(object):
 		self.prg.ground([("base", [])])
 		
 		
+		self.t = 0	
+		
+		
+	def run(self):
+		
 		print("Planning...")
 		self.model = []
 		with self.prg.solve(yield_=True) as h:
@@ -35,14 +41,7 @@ class Pathfind(object):
 				opt = m
 			for atom in opt.symbols(shown=True):
 				self.model.append(atom)
-				
 		
-		
-		
-		self.t = 0	
-		
-		
-	def run(self):
 		for atom in self.model:
 			name = atom.name
 			args = []
@@ -50,7 +49,11 @@ class Pathfind(object):
 				args.append(atom.arguments[0])
 				args.append(atom.arguments[1])
 				self.sim.add(atom.arguments[3], name, args, atom.arguments[2])
-			if name == "deliver" or name == "pickup" or name == "putdown":
+			if name == "pickup" or name == "putdown":
+				self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
+			if name == "deliver":
+				args.append(atom.arguments[2])
+				args.append(atom.arguments[3])
 				self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
 			
 		self.sim.run(self.t)
@@ -159,5 +162,25 @@ class Pathfind(object):
 				
 				
 if __name__ == "__main__":
+	
+	benchmark = True
+	
+	if benchmark == True:
+		t1 = time()
 	pathfind = Pathfind('./instance.lp', './pathfind.lp')
+	if benchmark == True:
+		t2 = time()
+		initTime = t2 - t1
+		print("Init time = %s" %(initTime))
+	if benchmark == True:
+		t1 = time()
 	pathfind.run()
+	if benchmark == True:
+		t2 = time()
+		runTime = t2 - t1
+		print("Run time = %s" %(runTime))
+		print("Total time = %s" %(initTime+runTime))
+	
+	
+	
+	

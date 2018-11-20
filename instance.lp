@@ -160,9 +160,9 @@ init(object(shelf,11),value(at,(9,4))).
 init(object(shelf,12),value(at,(10,4))).
 
 %order(P, S, R).
-%order(2, 1, 1).
-%order(4, 2, 2).
-%order(1, 2, 3).
+%order(2, 1, 1, 1).
+%order(4, 2, 2, 2).
+%order(1, 2, 3, 3).
 
 
 %start(1, 6).
