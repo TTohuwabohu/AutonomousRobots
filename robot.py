@@ -32,7 +32,7 @@ class Robot(object):
 		self.order[0] = id
 		self.order[1] = p
 		self.order[2] = s
-		print ( "order("+str(p)+", "+str(s)+", "+str(self.id)+", "+str(id)+").")
+		#print ( "order("+str(p)+", "+str(s)+", "+str(self.id)+", "+str(id)+").")
 		prg.add("base", [], "order("+str(p)+", "+str(s)+", "+str(self.id)+", "+str(id)+").")
 	
 

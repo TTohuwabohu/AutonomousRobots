@@ -3,6 +3,7 @@ import robot
 import printer
 import simulatorCostum
 from time import time
+import sys
 
 class Pathfind(object):
 	def __init__(self, instance, encoding, benchmark):
@@ -197,7 +198,7 @@ if __name__ == "__main__":
 	
 	if benchmark:
 		ts = time()
-	pathfind = Pathfind('./instance.lp', './pathfind.lp', benchmark)
+	pathfind = Pathfind(str(sys.argv[1]), './pathfind.lp', benchmark)
 	if benchmark:
 		tf = time()
 		initTime = tf-ts

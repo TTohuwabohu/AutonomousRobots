@@ -2,6 +2,7 @@
 #program centralized.
 start(X, Y, R) :- init(object(robot,R),value(at,(X,Y))).
 robot(R) :- init(object(robot,R),value(at,(X,Y))).
+available(N) :- init(object(shelf,N),value(at,(X,Y))).
 
 #program decentralized.
 robot(1).
@@ -10,7 +11,7 @@ robot(1).
 #external order(P, S, R, N) : init(object(order, N), value(line, (P, A))), init(object(order, N), value(pickingStation, S)), robot(R). % external damit bestellungen zugeordnet werden können
 % bei erneutem solven (weil weg blockiert war) muss festgelegt werden was bereits erledigt wurde
 #external pickup(0, R) : robot(R).
-#external deliver(0, R) : robot(R).
+#external deliver(0, R, P, N) : robot(R), order(P, S, R, N).
 #external block(X, Y) : node(X, Y).
 
 #program base.
@@ -22,12 +23,9 @@ node(X, Y) :- init(object(node, _), value(at, (X, Y))).
 highway(X, Y) :- init(object(highway,_),value(at,(X,Y))).
 
 
-
-time(1..30).
-
 pos(X, Y, 0, R) :- start(X, Y, R).
 dir(1, 0). dir(-1,0). dir(0, 1). dir(0, -1).
-pos(X+DX, Y+DY, T, R) :- pos(X, Y, T-1, R), move(DX, DY, T, R), robot(R).
+pos(X+DX, Y+DY, T, R) :- pos(X, Y, T-1, R), move(DX, DY, T, R), robot(R), X > 0, Y > 0.
 
 
 {move(X, Y, T, R) : dir(X, Y)} <= 1 :- pos(PX, PY, T-1, R), node(PX, PY), time(T), not action(T, R), robot(R).
@@ -63,7 +61,7 @@ putdown(T, R) :- pos(X, Y, T-1, R), goal(X, Y, 3, R), deliver(T2, R, _, _), T > 
 #minimize{1,T : move(X, Y, T, R)}.
 
 
-{chooseShelf(N, R) : available(N), product(P, N)} :- order(P, _, R, _), robot(R).
+{chooseShelf(N, R) : available(N), product(P, N)}=1 :- order(P, _, R, _), robot(R).
 :- robot(R), not chooseShelf(_, R).
 goal(X, Y, 1, R) :- chooseShelf(N, R), shelf(X, Y, N).
 goal(X, Y, 2, R) :- order(P, S, R, _), station(X, Y, S).
