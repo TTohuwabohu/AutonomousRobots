@@ -5,19 +5,32 @@ import simulatorCostum
 from time import time
 
 class Pathfind(object):
-	def __init__(self, instance, encoding):
+	def __init__(self, instance, encoding, benchmark):
 		self.instance = instance
 		self.encoding = encoding
 		self.prg = clingo.Control()
 		self.prg.load(instance)
+		if benchmark:
+			ts = time()
 		self.prg.ground([("base", [])])
+		if benchmark:
+			tf = time()
+			groundTime = tf-ts
+			print("IGt=%s," %(groundTime)), # Initial Ground time
 		self.state = []
+		if benchmark:
+			ts = time()
 		self.parse_instance()
-		
+		if benchmark:
+			tf = time()
+			t = tf-ts
+			print("Pt=%s," %(t)), # Parse Time
+		self.benchmark = benchmark
 		
 		self.sim = printer.Printer()
 		#self.sim = simulatorCostum.SimulatorCostum()
-		self.sim.add_inits(self.get_inits())
+		if not self.benchmark:
+			self.sim.add_inits(self.get_inits())
 
 		for robot in self.robots:
 			self.state[robot.pos[0]-1][robot.pos[1]-1] = 0
@@ -26,35 +39,46 @@ class Pathfind(object):
 		
 		
 		self.prg.load(encoding)
-		self.prg.ground([("base", [])])
-		
+		if benchmark:
+			ts = time()
+		self.prg.ground([("base", []),("centralized", [])])
+		if benchmark:
+			tf = time()
+			t = tf-ts
+			print("Gt=%s," %(t)), # Ground time
 		
 		self.t = 0	
 		
 		
 	def run(self):
 		
-		print("Planning...")
 		self.model = []
+		if benchmark:
+			ts = time()
 		with self.prg.solve(yield_=True) as h:
 			for m in h:
 				opt = m
 			for atom in opt.symbols(shown=True):
 				self.model.append(atom)
-		
+		if benchmark:
+			tf = time()
+			t = tf-ts
+			print("St=%s," %(t)), # Solve time
+			
 		for atom in self.model:
 			name = atom.name
 			args = []
-			if name == "move":
-				args.append(atom.arguments[0])
-				args.append(atom.arguments[1])
-				self.sim.add(atom.arguments[3], name, args, atom.arguments[2])
-			if name == "pickup" or name == "putdown":
-				self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
-			if name == "deliver":
-				args.append(atom.arguments[2])
-				args.append(atom.arguments[3])
-				self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
+			if not self.benchmark:
+				if name == "move":
+					args.append(atom.arguments[0])
+					args.append(atom.arguments[1])
+					self.sim.add(atom.arguments[3], name, args, atom.arguments[2])
+				if name == "pickup" or name == "putdown":
+					self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
+				if name == "deliver":
+					args.append(atom.arguments[2])
+					args.append(atom.arguments[3])
+					self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
 			
 		self.sim.run(self.t)
 		
@@ -102,6 +126,8 @@ class Pathfind(object):
 		self.shelves = []
 		self.products = []
 
+		if benchmark:
+			ts = time()
 		with self.prg.solve(yield_=True) as h:
 			# optimales modell auswaehlen
 			for m in h:
@@ -148,6 +174,10 @@ class Pathfind(object):
 						y = atom.arguments[1].arguments[1].arguments[1].number
 						self.shelves.append([id,x,y])
 
+		if benchmark:
+			tf = time()
+			t = tf-ts
+			print("ISt=%s," %(t)), # Initial Solve Time
 		# pickingstations zu orders zuteilen
 		for order in self.orders:
 			order.append(order_stations[order[0]])
@@ -165,21 +195,21 @@ if __name__ == "__main__":
 	
 	benchmark = True
 	
-	if benchmark == True:
-		t1 = time()
-	pathfind = Pathfind('./instance.lp', './pathfind.lp')
-	if benchmark == True:
-		t2 = time()
-		initTime = t2 - t1
-		print("Init time = %s" %(initTime))
-	if benchmark == True:
-		t1 = time()
+	if benchmark:
+		ts = time()
+	pathfind = Pathfind('./instance.lp', './pathfind.lp', benchmark)
+	if benchmark:
+		tf = time()
+		initTime = tf-ts
+		print("It=%s," %(initTime)), # Initial time
+	if benchmark:
+		ts = time()
 	pathfind.run()
-	if benchmark == True:
-		t2 = time()
-		runTime = t2 - t1
-		print("Run time = %s" %(runTime))
-		print("Total time = %s" %(initTime+runTime))
+	if benchmark:
+		tf = time()
+		runTime = tf-ts
+		print("Rt=%s," %(runTime)), # Run time
+		print("Tt=%s" %(initTime+runTime)) # Total time
 	
 	
 	
