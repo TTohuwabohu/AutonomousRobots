@@ -80,6 +80,9 @@ class Pathfind(object):
 					args.append(atom.arguments[2])
 					args.append(atom.arguments[3])
 					self.sim.add(atom.arguments[1], name, args, atom.arguments[0])
+			if name == "putdown":
+				if self.t < atom.arguments[0].number:
+					self.t = atom.arguments[0].number
 			
 		self.sim.run(self.t)
 		
@@ -210,7 +213,7 @@ if __name__ == "__main__":
 		tf = time()
 		runTime = tf-ts
 		print("Rt=%s," %(runTime)), # Run time
-		print("Tt=%s" %(initTime+runTime)) # Total time
+		print("Tt=%s" %(initTime+runTime)), # Total time
 	
 	
 	
