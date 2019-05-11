@@ -10,13 +10,13 @@ pathfind.py - The general python framework
 
 robot.py - Implements functionality for the robots
 
-Both files are modified versions of the master branch (the decentralized version)
+Both files are modified versions of the master branch (the decentralized version).
 
 **Planning encodings**
 
 pathfind.lp - The general planning encoding 
 
-This is the same encoding as used in the decentralized version 
+This is the same encoding as used in the decentralized version .
 
 ## Instance Format
 
@@ -25,3 +25,4 @@ Additionally a horizon for the instance is required given by `time(1..N).`
 
 ## Usage
 
+Python (tested with version 2.7) and the python module of [**clingo**](<https://github.com/potassco/clingo>) are required.
