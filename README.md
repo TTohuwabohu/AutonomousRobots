@@ -16,7 +16,7 @@ Both files are modified versions of the master branch (the decentralized version
 
 pathfind.lp - The general planning encoding 
 
-This is the same encoding as used in the decentralized version .
+This is the same encoding as used in the decentralized version.
 
 ## Instance Format
 
