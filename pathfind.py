@@ -234,7 +234,10 @@ class PathfindDecentralized(Pathfind):
 
         # take time for checking if timeout
         self.start_time: float = time()
+        self.orders_prg = clingo.Control()
+        
 
+        
         if self.benchmark:
             self.ground_times: List[float] = []
             self.solve_times: List[float] = []
@@ -309,7 +312,70 @@ class PathfindDecentralized(Pathfind):
         """Assign the first possible order to the robot
         Return True/False if an order was assigned/wasn't assigned
         """
-
+        
+        if self.orders == []:
+            return False
+        
+        self.orders_prg = clingo.Control()
+        self.orders_prg.load("./encodings/assignOrders.lp")
+        #self.orders_prg.load(instance)
+        
+        available_shelves = self.shelves.copy()
+        for id in self.used_shelves:
+            for shelf in available_shelves:
+                if id == shelf[0]:
+                    available_shelves.remove(shelf)
+                    
+        for shelf in available_shelves: # shelf: id, X, Y
+            self.orders_prg.add("base", [], "available(" + str(shelf[0]) +","+ str(shelf[1]) +","+str(shelf[2]) +").")
+        
+        for r in self.robots:
+            if r.shelf == -1:
+                self.orders_prg.add("base", [], "position(" + str(r.id) + ",(" + str(r.pos[0]) + "," + str(r.pos[1]) + ")).")
+                self.orders_prg.add("base", [], "robot(" + str(r.id) + ").")
+    
+        for o in self.orders: #o: id, product, station
+            self.orders_prg.add("base", [], "order(" + str(o[1]) + "," + str(o[2]) + "," + str(o[0]) + ").")
+        
+        for s in self.pickingstations: # id, X, Y
+            self.orders_prg.add("base", [], "station(" + str(s[1]) + "," + str(s[2]) + "," + str(s[0]) + ").")
+        
+        for p in self.products: # id, shelf
+            self.orders_prg.add("base", [], "product(" + str(p[0]) + "," + str(p[1]) + ").")
+        
+        self.orders_prg.ground([("base", [])])
+        found_model = False
+        with self.orders_prg.solve(yield_=True) as h:
+            for m in h:
+                found_model = True
+                opt = m
+            if found_model:
+                for atom in opt.symbols(shown=True):
+                    if atom.name == "goal":
+                        for r in self.robots:
+                            if r.id == atom.arguments[1].number:
+                                if atom.arguments[2].number == 1:
+                                    r.goalA = (atom.arguments[0].arguments[0].number,atom.arguments[0].arguments[1].number)
+                                if atom.arguments[2].number == 2:
+                                    r.goalB = (atom.arguments[0].arguments[0].number,atom.arguments[0].arguments[1].number)
+                                if atom.arguments[2].number == 3:
+                                    r.goalC = (atom.arguments[0].arguments[0].number,atom.arguments[0].arguments[1].number)
+                    if atom.name == "chooseShelf":
+                        for s in self.shelves:
+                            if s[0] == atom.arguments[0].number:
+                                self.reserve_shelf(s)
+                                print(s)
+                        for r in self.robots:
+                            if r.id == atom.arguments[1].number:
+                                r.shelf = atom.arguments[0].number
+                    if atom.name == "order":
+                        print("o:")
+                        print (atom)
+                        for r in self.robots:
+                            if r.id == atom.arguments[3].number:
+                                self.reserve_order(atom.arguments[2].number, r)
+        
+        
         # possible_shelves is used to check if an order can be completed
         possible_shelves = []
         o = -1
@@ -330,20 +396,27 @@ class PathfindDecentralized(Pathfind):
             # assign the order to the robot and say which shelves can be used
             robot.set_order(self.orders[o], possible_shelves)
             # make sure the order isn't assigned again
-            self.reserve_order(self.orders[o])
+            #self.reserve_order(self.orders[o])
         return possible_order
 
     def finish_order(self, order, shelf):
         """Releases the shelf and removes the order from orders_in_delivery"""
         self.release_shelf(shelf)
+        print(self.orders)
+        print(self.orders_in_delivery)
+        print(order)
         self.orders_in_delivery.remove(order)
 
-    def reserve_order(self, order):
+    def reserve_order(self, orderid, robot):
         """Adds the order to list of orders which are currently being delivered
         and removes from list of orders which are open
+        Then sets it as active order for the robot
         """
-        self.orders_in_delivery.append(order)
-        self.orders.remove(order)
+        for order in self.orders:
+            if order[0] == orderid:
+                self.orders_in_delivery.append(order)
+                self.orders.remove(order)
+                robot.set_order(order, [])
 
     def release_order(self, order):
         """Removes the order from list of orders which are currently being delivered
@@ -422,10 +495,9 @@ class PathfindDecentralized(Pathfind):
         self.prg = clingo.Control(self.clingo_arguments)
         self.prg.load("./encodings/conflicts.lp")
         for r in self.robots:
+            print("r" + str(r.id) + " at " + str(r.pos))
             if r.next_action != clingo.Function("", []):
                 self.prg.add("base", [], str(r.next_action) + ".")
-            else:
-                self.prg.add("base", [], str("wait(" + str(r.id) + ")."))
             self.prg.add("base", [], "position(" + str(r.id) + ",(" + str(r.pos[0]) + "," + str(r.pos[1]) + ")).")
         self.prg.ground([("base", [])])
     
@@ -470,53 +542,41 @@ class PathfindDecentralizedSequential(PathfindDecentralized):
                 print("Timeout after " + str(time() - self.start_time) + "s", file=sys.stderr)
                 sys.exit(0)
             self.t += 1
+            
+            
 
+            self.resolved = True 
+            while(self.resolved == True):  # Needs to recheck for conflicts if a robot replans
+                self.resolved = False
+                print(self.state)
+                for r in self.robots:
+                    print(r.next_action)
+                conflicts = super().check_conflicts()
+                for conflict in conflicts:
+                    print(conflict)
+                    if conflict.name == "conflict" or conflict.name == "swap": # if there is a conflict the robot with the lower ID needs to replan
+                        for r in self.robots:
+                            if r.id == conflict.arguments[0].number:
+                                self.state[conflict.arguments[2].arguments[0].number-1][ conflict.arguments[2].arguments[1].number-1] = 0
+                                r.update_state(self.state)
+                                self.resolved = True
+                                if not self.plan(r):
+                                    super().add_wait(r)
+                    if conflict.name == "conflictW" or conflict.name == "conflictWO" or conflict.name == "conflictWOConf": # if another robots waits or performs an action the robot should wait
+                        for r in self.robots:
+                            if r.id == conflict.arguments[0].number:
+                                super().add_wait(r)
             
             for robot in self.robots:
-                robot.update_state(self.state)
-                for conflict in self.check_conflicts(robot):
-                    if conflict.name == "swap" or conflict.name == "conflict":
-                        if robot.id == conflict.arguments[0].number or robot.id == conflict.arguments[1].number :
-                            if not self.plan(robot):
-                                continue
-                    if conflict.name == "conflictW":
-                            robot.update_state(self.state)
-                            if not self.plan(robot):
-                                continue
                 self.state[robot.pos[0] - 1][robot.pos[1] - 1] = 1  # mark old position as free
                 self.perform_action(robot)
                 self.state[robot.pos[0] - 1][robot.pos[1] - 1] = 0  # mark new position as blocked
-            
 
         if self.domain == "m":
             self.t -= 1
 
         return self.t
 
-            
-    def check_conflicts(self, robot):
-        """Finds all conflicts between robots
-        and returns a list of conflicts
-        """
-        conflicts = []
-        self.prg = clingo.Control(self.clingo_arguments)
-        self.prg.load("./encodings/conflicts.lp")
-        for r in self.robots:
-            if r != robot:
-                self.prg.add("base", [], str("waits(" + str(r.id) + ")."))
-            else: 
-                if r.next_action != clingo.Function("", []):
-                    self.prg.add("base", [], str(r.next_action) + ".")
-            self.prg.add("base", [], "position(" + str(r.id) + ",(" + str(r.pos[0]) + "," + str(r.pos[1]) + ")).")
-        self.prg.ground([("base", [])])
-    
-        with self.prg.solve(yield_=True) as h:
-            for m in h:
-                for atom in m.symbols(shown=True):
-                    conflicts.append(atom)
-        return conflicts
-        
-        
 
 class PathfindDecentralizedShortest(PathfindDecentralized):
     def __init__(self, instance: str, encoding: str, domain: str, model_output: bool, verbose: bool,
@@ -524,7 +584,6 @@ class PathfindDecentralizedShortest(PathfindDecentralized):
                  clingo_arguments: List[str]) -> None:
         if benchmark:
             self.benchmarker = Benchmarker("shortest", instance, result_path)
-        self.resolved = False
         super().__init__(instance, encoding, domain, model_output, verbose, verbose_out, benchmark, external, highways,
                          timeout, clingo_arguments)
 
@@ -576,15 +635,15 @@ class PathfindDecentralizedShortest(PathfindDecentralized):
             for r in self.robots:
                 self.state[r.next_pos[0] - 1][r.next_pos[1] - 1] = 0
 
+
             self.resolved = True 
-            while self.resolved:  # Needs to recheck for conflicts if a robot replans
+            while(self.resolved == True):  # Needs to recheck for conflicts if a robot replans
                 self.resolved = False
                 conflicts = super().check_conflicts()
-
-                for conflict in conflicts:  # Conflict detection
-                    self.resolved = True
-                    if conflict.name == "conflict" or conflict.name == "swap":
-                        # if there is a conflict the robot with the lower ID needs to replan
+            
+            
+                for conflict in conflicts: # Conflict detection
+                    if conflict.name == "conflict" or conflict.name == "swap": # if there is a conflict the robot with the lower ID needs to replan
                         for r1 in self.robots:
                             if r1.id == conflict.arguments[0].number:
                                 for r2 in self.robots:
@@ -599,6 +658,7 @@ class PathfindDecentralizedShortest(PathfindDecentralized):
                                         
                                         # both robots move -> both have to find a new plan
                                         # self.replan returns added length of new plan
+                                        self.state[conflict.arguments[2].arguments[0].number-1][ conflict.arguments[2].arguments[1].number-1] = 0
                                         if self.benchmark:
                                             if rltime[r1.id - 1] > rltime[r2.id - 1]:
                                                 rltime[r2.id - 1] = rltime[r1.id - 1]
@@ -646,17 +706,17 @@ class PathfindDecentralizedShortest(PathfindDecentralized):
                                             self.change_plan(r1)
                                             # r2 continues using the old plan
                                             r2.use_old_plan()
-
-                    elif conflict.name in ["conflictW", "conflictWO"]:
-                        # if another robots waits or performs an action the robot should wait
+            
+                                        
+                    elif conflict.name == "conflictW" or conflict.name == "conflictWO": # if another robots waits or performs an action the robot should wait
                         for r in self.robots:
                             if r.id == conflict.arguments[0].number:
-                                for r2 in self.robots:
-                                    if r2.id == conflict.arguments[1].number:
-                                        if r2.shelf != -1:
-                                            self.add_wait(r)
-                                        else:
-                                            self.plan(r)
+                                self.print_verbose("r" + str(conflict.arguments[1]) + " delivers")
+                                self.add_wait(r)
+
+
+
+            
 
             if self.benchmark:
                 self.real_time += max(rltime)

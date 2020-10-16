@@ -11,6 +11,10 @@ class Robot(object):
         self.start = list(start)
         self.pos = list(start)
 
+        self.goalA = (-1,-1)
+        self.goalB = (-1,-1)
+        self.goalC = (-1,-1)
+        
         self.next_pos = [-1, -1]
 
         self.state = []  # State of the world around the robot as 2D Matrix
@@ -54,13 +58,19 @@ class Robot(object):
         If you dont want to compare the old and new plan use solve() instead"""
         self.old_model = list(self.model)
         self.old_plan_length = self.plan_length
-
         self.model = []
-        
+
         if self.external:
             # Assign externals before solving
             self.prg.assign_external(clingo.Function("start", [(self.start[0], self.start[1]), self.id]), False)
             self.prg.assign_external(clingo.Function("start", [(self.pos[0], self.pos[1]), self.id]), True)
+            
+            
+            print(str(clingo.Function("goal", [(self.goalB[0], self.goalB[1]), self.id, 2])))
+            
+            self.prg.assign_external(clingo.Function("goal", [(self.goalA[0], self.goalA[1]), self.id, 1]), True)
+            self.prg.assign_external(clingo.Function("goal", [(self.goalB[0], self.goalB[1]), self.id, 2]), True)
+            self.prg.assign_external(clingo.Function("goal", [(self.goalC[0], self.goalC[1]), self.id, 3]), True)
 
             self.prg.assign_external(clingo.Function("pickup", [self.id, 0]), self.pickupdone)
             self.prg.assign_external(clingo.Function("deliver", [self.order[1], self.order[0], self.id, 0]),
@@ -74,13 +84,15 @@ class Robot(object):
             for i in range(len(self.state)):
                 for j in range(len(self.state[0])):
                     self.prg.assign_external(clingo.Function("block", [(i + 1, j + 1)]), not self.state[i][j])
-        else:  # if the flag -i is used
+        else:  # default
             # Add all externals directly as literals instead and then ground
             self.prg = clingo.Control(self.clingo_arguments)
             self.prg.load(self.encoding)
             self.prg.load(self.instance)
             
-
+            self.prg.add("base", [], "goal((" + str(self.goalA[0]) + "," + str(self.goalA[1]) + ")," + str(self.id) + ", 1).")
+            self.prg.add("base", [], "goal((" + str(self.goalB[0]) + "," + str(self.goalB[1]) + ")," + str(self.id) + ", 2).")
+            self.prg.add("base", [], "goal((" + str(self.goalC[0]) + "," + str(self.goalC[1]) + ")," + str(self.id) + ", 3).")
             
             self.prg.add("base", [], "start((" + str(self.pos[0]) + "," + str(self.pos[1]) + ")," + str(self.id) + ").")
             if self.pickupdone:
@@ -109,7 +121,7 @@ class Robot(object):
 
         self.start = list(self.pos)
         self.plan_finished = False
-        
+
         # Solving; Due to the #minimize{}. the last model we find will be optimal
         found_model = False
         with self.prg.solve(yield_=True) as h:
@@ -214,7 +226,6 @@ class Robot(object):
 
     def set_order(self, order, available_shelves):
         """Set order to be used as the next input in solving"""
-        self.shelf = -1
 
         self.order = list(order)
         self.available_shelves = list(available_shelves)
