@@ -15,7 +15,7 @@ pos(C,R,T) :- pos(C,R,T-1), action(R,T), time(T), robot(R).
 :- pos(C,_,_), not node(C), robot(R).
 
 :- pos(C,R,T), shelf(C,_), not goal(C,R,1), time(T), robot(R). % at t=0 robots are allowed to be on nodes with a shelf
-:- pos(C,R,_), station(C,_), not goal(C,R,2), robot(R).
+:- pos(C,R,T), station(C,_), not goal(C,R,2), robot(R).
 
 :- move((X,Y),R,T), move((-X,-Y),R,T-1), time(T), robot(R).
 

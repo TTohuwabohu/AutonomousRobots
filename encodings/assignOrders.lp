@@ -7,7 +7,8 @@
 
 
  {order(P,S,N,R) : order(P,S,N)} 1 :- robot(R).
-
+ :- order(_, _, N, R), order(_, _, N, R2), R < R2.
+ 
 
  { chooseShelf(N,R) : available(N, _, _), product(P,N) } 1 :- order(P,_,_,R), robot(R).
 :- chooseShelf(N, R1), chooseShelf(N, R2), R1 < R2.
