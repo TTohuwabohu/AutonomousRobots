@@ -7,6 +7,6 @@
 #show goal/3.
 #show move/3.
 #show pos/3.
-#show carries/2.
+%#show carries/2.
 #show block/1.
 #show chooseShelf/2.

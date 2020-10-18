@@ -60,7 +60,8 @@ class Robot(object):
         If you dont want to compare the old and new plan use solve() instead"""
         self.old_model = list(self.model)
         self.old_plan_length = self.plan_length
-
+        self.plan_length = -1
+        
         self.model = []
         
         if self.external:
@@ -132,8 +133,12 @@ class Robot(object):
                     if atom.name == "chooseShelf":
                         self.shelf = atom.arguments[0].number
                     elif (atom.name == "putdown" and self.domain == "b") or \
-                         (atom.name == "pickup" and self.domain == "m"):
-                        self.plan_length = atom.arguments[1].number
+                         (atom.name == "pickup"):
+                         if self.plan_length < atom.arguments[1].number:
+                            self.plan_length = atom.arguments[1].number
+                    elif (atom.name == "deliver" and self.domain == "b"):
+                        if self.plan_length < atom.arguments[3].number:
+                            self.plan_length = atom.arguments[3].number
 
         if not found_model:
             print("Nomodel")
@@ -513,6 +518,10 @@ class RobotPrioritized(Robot):
         # similar to Robot.solve() / Robot.find_new_plan()
         # but needs to add the additional input to the program
         # and clear additional inputs after solving
+        
+        self.path_length = -1
+        self.model = []
+        
         self.prg = clingo.Control(self.clingo_arguments)
         self.prg.load(self.encoding)
         self.prg.load(self.instance)
@@ -520,7 +529,6 @@ class RobotPrioritized(Robot):
 
         self.prg.add("base", [],"goal(" + str(self.goalA) + "," + str(self.id) + ", 1).")
         if self.pickupdone:
-            print(str(self.id) + "solving with pickupdone")
             self.prg.add("base", [], "pickup(" + str(self.id) + ",0).")
             self.prg.add("base", [],"goal(" + str(self.goalB) + "," + str(self.id) + ", 2).")
         if self.deliverdone:
@@ -556,13 +564,16 @@ class RobotPrioritized(Robot):
                 opt = m
             if found_model:
                 for atom in opt.symbols(shown=True):
-                    print(atom)
                     self.model.append(atom)
                     if atom.name == "chooseShelf":
                         self.shelf = atom.arguments[0].number
                     elif (atom.name == "putdown" and self.domain == "b") or \
-                         (atom.name == "pickup" and self.domain == "m"):
-                        self.plan_length = atom.arguments[1].number
+                         (atom.name == "pickup"):
+                         if self.plan_length < atom.arguments[1].number:
+                            self.plan_length = atom.arguments[1].number
+                    elif (atom.name == "deliver" and self.domain == "b"):
+                        if self.plan_length < atom.arguments[3].number:
+                            self.plan_length = atom.arguments[3].number
 
         if not found_model:
             self.plan_length = -1

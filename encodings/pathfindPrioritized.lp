@@ -7,7 +7,7 @@ robot(r).
 #include "./movement.lp".
 #include "./collision.lp".
 #include "./action.lp".
-#include "./optimization.lp".
+#include "./optimizationPrioritized.lp".
 #include "./outputPrioritized.lp".
 
 :- pos(C,R,_), blockAll(C), robot(R).
